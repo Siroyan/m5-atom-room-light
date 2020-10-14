@@ -1,7 +1,12 @@
 #include <Arduino.h>
+#include <WiFiClientSecure.h>
 #include <IRremoteESP8266.h>
 #include <IRsend.h>
+#include "Credentials.h"
 #include "M5Atom.h"
+
+const char* ssid = WIFI_SSID;
+const char* password = WIFI_PW;
 
 const uint16_t kIrLed = G32;
 IRsend irsend(kIrLed);
@@ -19,8 +24,16 @@ uint16_t rawData[135] = {4740, 2546, 644, 778, 666, 1722, 692, 1750, 644, 850, 6
 
 void setup() {
 	irsend.begin();
-	Serial.begin(115200, SERIAL_8N1);
 	M5.begin(true, false, true);
+
+	// シリアル通信
+	Serial.begin(115200);
+	delay(1000);
+
+	// Wi-Fi
+	WiFi.begin(ssid, password);
+	while (WiFi.status() != WL_CONNECTED);
+	Serial.println("Connected to " + String(ssid));
 }
 
 void loop() {
