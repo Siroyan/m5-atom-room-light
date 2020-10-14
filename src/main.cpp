@@ -25,9 +25,9 @@ void setup() {
 
 void loop() {
 	if (M5.Btn.wasReleased()) {
-		irsend.sendRaw(rawData, 67, 38);
-		delay(500);
-		irsend.sendRaw(rawData, 67, 38);
+		irsend.sendRaw(rawData, 135, 38);
+		delay(250);
+		irsend.sendRaw(rawData, 135, 38);
 	}
 	M5.update();
 }
