@@ -8,7 +8,7 @@
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PW;
 
-const uint16_t kIrLed = G32;
+const uint16_t kIrLed = G33;
 IRsend irsend(kIrLed);
 
 uint16_t rawData[135] = {4740, 2546, 644, 778, 666, 1722, 692, 1750, 644, 850, 666, 1722, 694, 
@@ -24,7 +24,6 @@ uint16_t rawData[135] = {4740, 2546, 644, 778, 666, 1722, 692, 1750, 644, 850, 6
 
 void setup() {
 	irsend.begin();
-	M5.begin(true, false, true);
 
 	// シリアル通信
 	Serial.begin(115200);
@@ -34,10 +33,13 @@ void setup() {
 	WiFi.begin(ssid, password);
 	while (WiFi.status() != WL_CONNECTED);
 	Serial.println("Connected to " + String(ssid));
+
+	M5.begin(true, false, true);
 }
 
 void loop() {
 	if (M5.Btn.wasReleased()) {
+        Serial.println("pushed");
 		irsend.sendRaw(rawData, 135, 38);
 		delay(250);
 		irsend.sendRaw(rawData, 135, 38);
