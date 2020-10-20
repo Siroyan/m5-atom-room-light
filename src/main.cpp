@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <WiFiClientSecure.h>
+#include <WiFi.h>
 #include <IRremoteESP8266.h>
 #include <IRsend.h>
 #include "Credentials.h"
@@ -7,6 +7,7 @@
 
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PW;
+WiFiServer server(80);
 
 const uint16_t kIrLed = G33;
 IRsend irsend(kIrLed);
@@ -32,17 +33,53 @@ void setup() {
 	// Wi-Fi
 	WiFi.begin(ssid, password);
 	while (WiFi.status() != WL_CONNECTED);
-	Serial.println("Connected to " + String(ssid));
+	Serial.println(WiFi.localIP());
 
-	M5.begin(true, false, true);
+	server.begin();
+
+	M5.begin(false, false, true);
 }
 
 void loop() {
-	if (M5.Btn.wasReleased()) {
-        Serial.println("pushed");
-		irsend.sendRaw(rawData, 135, 38);
-		delay(250);
-		irsend.sendRaw(rawData, 135, 38);
+	WiFiClient client = server.available();
+	if (client) {
+		String currentLine = "";
+		while (client.connected()) {
+			if (client.available()) {
+				char c = client.read();
+				if (c == '\n') {
+					if (currentLine.length() == 0) {
+						client.println("HTTP/1.1 200 OK");
+						client.println("Content-type:text/html");
+						client.println();
+						client.print("<a href=\"/switch\">here</a>");
+						client.println();
+						break;
+					} else {
+						currentLine = "";
+					}
+				} else if (c != '\r') {
+					currentLine += c;
+				}
+				if (currentLine.endsWith("GET /switch")) {
+					Serial.println("pushed");
+					for(int x = 0; x < 5; x++) {
+						for (int y = 0; y < 5; y++) {
+							M5.dis.drawpix(x, y, 0xFFFFFF);
+						}
+					}
+					irsend.sendRaw(rawData, 135, 38);
+					delay(250);
+					for(int x = 0; x < 5; x++) {
+						for (int y = 0; y < 5; y++) {
+							M5.dis.drawpix(x, y, 0x000000);
+						}
+					}
+					irsend.sendRaw(rawData, 135, 38);
+				}
+			} 
+		}
+		client.stop();
+		Serial.println("Disconnected");
 	}
-	M5.update();
 }
