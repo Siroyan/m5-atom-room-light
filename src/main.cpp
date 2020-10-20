@@ -1,9 +1,15 @@
 #include <Arduino.h>
+#include <WiFi.h>
 #include <IRremoteESP8266.h>
 #include <IRsend.h>
+#include "Credentials.h"
 #include "M5Atom.h"
 
-const uint16_t kIrLed = G32;
+const char* ssid = WIFI_SSID;
+const char* password = WIFI_PW;
+WiFiServer server(80);
+
+const uint16_t kIrLed = G33;
 IRsend irsend(kIrLed);
 
 uint16_t rawData[135] = {4740, 2546, 644, 778, 666, 1722, 692, 1750, 644, 850, 666, 1722, 694, 
@@ -19,15 +25,61 @@ uint16_t rawData[135] = {4740, 2546, 644, 778, 666, 1722, 692, 1750, 644, 850, 6
 
 void setup() {
 	irsend.begin();
-	Serial.begin(115200, SERIAL_8N1);
-	M5.begin(true, false, true);
+
+	// シリアル通信
+	Serial.begin(115200);
+	delay(1000);
+
+	// Wi-Fi
+	WiFi.begin(ssid, password);
+	while (WiFi.status() != WL_CONNECTED);
+	Serial.println(WiFi.localIP());
+
+	server.begin();
+
+	M5.begin(false, false, true);
 }
 
 void loop() {
-	if (M5.Btn.wasReleased()) {
-		irsend.sendRaw(rawData, 135, 38);
-		delay(250);
-		irsend.sendRaw(rawData, 135, 38);
+	WiFiClient client = server.available();
+	if (client) {
+		String currentLine = "";
+		while (client.connected()) {
+			if (client.available()) {
+				char c = client.read();
+				if (c == '\n') {
+					if (currentLine.length() == 0) {
+						client.println("HTTP/1.1 200 OK");
+						client.println("Content-type:text/html");
+						client.println();
+						client.print("<a href=\"/switch\">here</a>");
+						client.println();
+						break;
+					} else {
+						currentLine = "";
+					}
+				} else if (c != '\r') {
+					currentLine += c;
+				}
+				if (currentLine.endsWith("GET /switch")) {
+					Serial.println("pushed");
+					for(int x = 0; x < 5; x++) {
+						for (int y = 0; y < 5; y++) {
+							M5.dis.drawpix(x, y, 0xFFFFFF);
+						}
+					}
+					irsend.sendRaw(rawData, 135, 38);
+					delay(250);
+					for(int x = 0; x < 5; x++) {
+						for (int y = 0; y < 5; y++) {
+							M5.dis.drawpix(x, y, 0x000000);
+						}
+					}
+					irsend.sendRaw(rawData, 135, 38);
+				}
+			} 
+		}
+		client.stop();
+		Serial.println("Disconnected");
 	}
-	M5.update();
 }
